@@ -68,43 +68,54 @@ export async function POST(request: Request): Promise<Response> {
       });
     }
 
-    // Step 3: Analyze tweets with Claude API (fallback from Kimi K2 due to auth issues)
+    // Step 3: Analyze tweets with Kimi K2 (exact copy of working main app)
     const analysisPrompt = createXAnalysisPrompt(symbol, contract_address, tweets);
     
-    console.log('Using Claude API as fallback due to OpenRouter auth issues');
+    // Prepare tweet content exactly like main app
+    const tweetTexts = tweets
+      .map((tweet, i) => `Tweet ${i + 1}: ${tweet}`)
+      .join('\n');
     
-    const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
+    console.log('Using Kimi K2 via OpenRouter - exact implementation as main app');
+    
+    // Use EXACT same implementation as working app
+    const model = 'moonshotai/kimi-k2';
+    const maxTokens = 1000;
+    
+    const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY!,
-        'anthropic-version': '2023-06-01'
+        'Authorization': `Bearer ${process.env.OPEN_ROUTER_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'claude-3-haiku-20240307',
-        max_tokens: 800,
-        temperature: 0,
-        system: analysisPrompt,
+        model: model,
         messages: [
           {
+            role: 'system',
+            content: analysisPrompt
+          },
+          {
             role: 'user',
-            content: `Analyze these tweets about ${symbol} token (contract: ${contract_address}):`
+            content: `Analyze these tweets about ${symbol} token (captured at unknown time):\n\n${tweetTexts}`
           }
-        ]
+        ],
+        temperature: 0,
+        max_tokens: maxTokens
       })
     });
 
-    if (!claudeResponse.ok) {
-      const errorBody = await claudeResponse.text();
-      console.error('Claude API Error:', claudeResponse.status, errorBody);
+    if (!openRouterResponse.ok) {
+      const errorBody = await openRouterResponse.text();
+      console.error('OpenRouter API Error:', openRouterResponse.status, errorBody);
       return NextResponse.json({
         success: false,
-        error: `Claude API failed: ${claudeResponse.status} - ${errorBody}`
+        error: `Kimi K2 API failed: ${openRouterResponse.status} - ${errorBody}`
       }, { status: 500 });
     }
 
-    const claudeResult = await claudeResponse.json();
-    const analysisText = claudeResult.content[0].text;
+    const openRouterResult = await openRouterResponse.json();
+    const analysisText = openRouterResult.choices[0].message.content;
 
     // Step 4: Parse Kimi K2's response
     const analysis = parseKimiAnalysis(analysisText, tweets);

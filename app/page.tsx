@@ -201,7 +201,7 @@ export default function Home() {
                                     {xResult.analysis!.score}/10 - {xResult.analysis!.tier}
                                   </span>
                                   <div className="text-xs text-gray-600 mt-1">
-                                    {xResult.analysis!.tweets_found} tweets • {xResult.analysis!.token_type} • {xResult.analysis!.legitimacy_factor}
+                                    {xResult.analysis!.tweets_found} tweets • {xResult.analysis!.token_type} • {xResult.analysis!.legitimacy_factor} • Kimi K2
                                   </div>
                                   <details className="mt-1">
                                     <summary className="text-xs text-blue-600 cursor-pointer">View Details</summary>
