@@ -78,9 +78,9 @@ export async function POST(request: Request): Promise<Response> {
     
     console.log('Using Kimi K2 via OpenRouter - exact implementation as main app');
     
-    // Use EXACT same implementation as working app
+    // Use EXACT same implementation as working app but reduce tokens for speed
     const model = 'moonshotai/kimi-k2';
-    const maxTokens = 1000;
+    const maxTokens = 300; // Reduced for faster response
     
     const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
