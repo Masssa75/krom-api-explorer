@@ -3,8 +3,8 @@
 import { useState } from 'react';
 
 export default function Home() {
-  const [dexResults, setDexResults] = useState<any>(null);
-  const [geckoResults, setGeckoResults] = useState<any>(null);
+  const [dexResults, setDexResults] = useState<object | null>(null);
+  const [geckoResults, setGeckoResults] = useState<object | null>(null);
   const [loading, setLoading] = useState<string>('');
   const [error, setError] = useState<string>('');
 
@@ -15,7 +15,7 @@ export default function Home() {
       const res = await fetch('/api/dexscreener/trending');
       const data = await res.json();
       setDexResults(data);
-    } catch (err) {
+    } catch {
       setError('Failed to fetch DexScreener data');
     }
     setLoading('');
@@ -28,7 +28,7 @@ export default function Home() {
       const res = await fetch(`/api/geckoterminal/trending?network=${network}`);
       const data = await res.json();
       setGeckoResults(data);
-    } catch (err) {
+    } catch {
       setError('Failed to fetch GeckoTerminal data');
     }
     setLoading('');

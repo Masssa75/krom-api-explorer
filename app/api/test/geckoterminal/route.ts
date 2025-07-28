@@ -1,7 +1,17 @@
 import { NextResponse } from 'next/server';
 
+interface EndpointResult {
+  status?: number;
+  statusText?: string;
+  contentType?: string | null;
+  hasData?: boolean;
+  sampleData?: string;
+  dataStructure?: string[];
+  error?: string;
+}
+
 export async function GET() {
-  const results: Record<string, any> = {};
+  const results: Record<string, EndpointResult> = {};
   
   // Test various GeckoTerminal endpoints
   const endpoints = [
@@ -18,7 +28,7 @@ export async function GET() {
       const response = await fetch(`https://api.geckoterminal.com/api/v2/${endpoint}`);
       const contentType = response.headers.get('content-type');
       
-      results[endpoint] = {
+      const result: EndpointResult = {
         status: response.status,
         statusText: response.statusText,
         contentType,
@@ -27,9 +37,11 @@ export async function GET() {
       
       if (response.status === 200 && contentType?.includes('application/json')) {
         const data = await response.json();
-        results[endpoint].sampleData = JSON.stringify(data).slice(0, 200) + '...';
-        results[endpoint].dataStructure = Object.keys(data);
+        result.sampleData = JSON.stringify(data).slice(0, 200) + '...';
+        result.dataStructure = Object.keys(data);
       }
+      
+      results[endpoint] = result;
     } catch (error) {
       results[endpoint] = {
         error: error instanceof Error ? error.message : 'Unknown error'
