@@ -1,80 +1,135 @@
 # KROM API Explorer Documentation
 
 ## Overview
-A Next.js application for exploring external crypto APIs (DexScreener, GeckoTerminal) to identify trending tokens and add them as additional signal sources to the KROM analysis ecosystem.
+A Next.js application for exploring external crypto APIs to discover new tokens and analyze their social presence. Features real-time X/Twitter analysis and new token discovery from GeckoTerminal.
 
 **Live URL**: https://majestic-centaur-0d5fcc.netlify.app  
 **GitHub**: https://github.com/Masssa75/krom-api-explorer
 
-## Purpose
-This app enables manual discovery and import of trending tokens from external sources into the KROM ecosystem. Once imported, these tokens are processed by the same analysis pipeline as KROM calls.
-
 ## Key Features
-- **API Testing**: Explore DexScreener and GeckoTerminal endpoints
-- **Token Discovery**: Find trending tokens on various networks
-- **Manual Import**: Save selected tokens to Supabase with `source='geckoterminal'`
-- **Filtering**: Excludes standard tokens (SOL, USDC) and low-volume tokens (<$10k)
+
+### 1. Main Explorer Page (/)
+- **Trending Tokens**: Fetches trending tokens from GeckoTerminal
+- **Standalone X Analysis**: Analyze any token's Twitter/X presence without database storage
+- **Manual Import**: Save selected tokens to Supabase for further processing
+
+### 2. New Token Discovery Page (/new-tokens)
+- **Real-time New Pools**: Shows tokens created in the last 1-48 hours
+- **Quality Scoring**: Custom algorithm (0-100) based on:
+  - Volume (30 points max)
+  - Unique buyers (25 points max)
+  - Liquidity depth (20 points max)
+  - Price performance (15 points max)
+  - Age bonus for ultra-fresh tokens (10 points max)
+- **Pagination**: Browse through hundreds of new tokens
+- **Advanced Filters**:
+  - Network: Solana, Ethereum, Base, Polygon, Avalanche, BSC
+  - Age: 1h, 6h, 12h, 24h, 48h
+  - Min Volume: $0 to $100K+
+  - Min Liquidity: $0 to $100K+
+  - Min Buyers: 0 to 100+
+- **Sorting Options**: Age, Quality Score, Volume, Buyers, Liquidity, Price Change, FDV
+- **Integrated X Analysis**: Analyze social presence for any token
+- **Auto-refresh**: Optional 30-second refresh
+
+### 3. Standalone X Analysis
+- **AI Model**: Kimi K2 via OpenRouter (60-second timeout configured)
+- **No Database**: Pure real-time analysis
+- **Scoring**: 1-10 scale with color-coded badges
+- **Analysis Includes**:
+  - Tweet count and quality assessment
+  - Token type detection (meme/utility)
+  - Legitimacy factor (Low/Medium/High)
+  - Best tweet extraction
+  - Detailed reasoning
 
 ## Tech Stack
 - **Framework**: Next.js 15.4.4 with App Router
-- **Database**: Supabase (shared with main KROM ecosystem)
-- **Deployment**: Netlify
-- **APIs**: GeckoTerminal, DexScreener (in progress)
+- **Deployment**: Netlify with 60-second function timeout
+- **APIs**: 
+  - GeckoTerminal (token data)
+  - ScraperAPI + Nitter (X/Twitter data)
+  - OpenRouter/Kimi K2 (AI analysis)
+- **Styling**: Tailwind CSS
 
 ## Environment Variables
-Set in Netlify Dashboard:
-- `SUPABASE_URL` - Supabase instance URL
-- `SUPABASE_SERVICE_ROLE_KEY` - Service role key for database access
+Required in Netlify:
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SCRAPERAPI_KEY`
+- `OPEN_ROUTER_API_KEY` (for Kimi K2 access)
 
 ## API Endpoints
 
-### Testing Endpoints
-- `GET /api/test/dexscreener` - Test available DexScreener endpoints
-- `GET /api/test/geckoterminal` - Test available GeckoTerminal endpoints
+### GeckoTerminal Integration
+- `GET /api/geckoterminal/trending` - Fetch trending pools
+- `GET /api/geckoterminal/new-pools` - Fetch newly created pools with filters
+- `GET /api/geckoterminal/token-info` - Get token metadata
+- `POST /api/geckoterminal/process-trending` - Save tokens to database
 
-### Data Endpoints
-- `GET /api/geckoterminal/trending?network={network}` - Fetch trending pools
-- `POST /api/geckoterminal/process-trending` - Save trending tokens to database
+### X Analysis
+- `POST /api/x-analyze-standalone` - Analyze token's X/Twitter presence
+  - Input: `{ contract_address, symbol, network }`
+  - Output: Score, tier, token type, tweet analysis
 
-## Manual Workflow
+## Quality Score Algorithm
+```javascript
+function calculateQualityScore(attributes, ageHours) {
+  let score = 0;
+  
+  // Volume (0-30 points)
+  if (volume24h > 100000) score += 30;
+  else if (volume24h > 50000) score += 25;
+  // ... scaled down to 5 points for >$1K
+  
+  // Buyers (0-25 points)
+  if (buyers24h > 100) score += 25;
+  else if (buyers24h > 50) score += 20;
+  // ... scaled down to 5 points for >5 buyers
+  
+  // Liquidity (0-20 points)
+  if (reserveUsd > 100000) score += 20;
+  else if (reserveUsd > 50000) score += 15;
+  // ... scaled down to 5 points for >$10K
+  
+  // Price Change (0-15 points)
+  if (priceChange24h > 100) score += 15;
+  else if (priceChange24h > 50) score += 10;
+  // ... scaled down to 2 points for positive
+  
+  // Age Bonus (0-10 points)
+  if (ageHours < 1) score += 10;
+  else if (ageHours < 6) score += 8;
+  // ... scaled down to 4 points for <24h
+  
+  return Math.round(score);
+}
+```
 
-1. **Fetch Trending**: Click button to get trending Solana tokens from GeckoTerminal
-2. **Preview**: Review discovered tokens (symbol, contract, volume, age)
-3. **Save**: Store new tokens to `crypto_calls` table with `source='geckoterminal'`
-4. **Analyze**: Run existing edge functions on new tokens
+## Usage Tips
 
-## Database Integration
+### Finding Quality New Tokens
+1. **Ultra-fresh High Volume**: Age < 1h, Min Volume $10K+
+2. **Quality Gems**: Age < 24h, Min Volume $25K+, Sort by Quality Score
+3. **Pump Candidates**: Age < 6h, Sort by Price Change %
 
-Tokens are saved to the `crypto_calls` table with:
-- `source = 'geckoterminal'` - Identifies the signal source
-- `contract_address` - Token contract address
-- `network` - Blockchain network (e.g., 'solana')
-- `raw_data` - Original API response with metrics
-- Standard fields for compatibility with existing analysis
+### X Analysis Interpretation
+- **7-10 Score**: Strong community, real engagement, potential gem
+- **5-6 Score**: Moderate activity, worth monitoring
+- **1-4 Score**: Low/fake engagement, likely scam or low quality
 
-## Current Implementation Status
+## Recent Updates (July 28, 2025)
+- ✅ Fixed Kimi K2 authentication issues
+- ✅ Increased Netlify function timeout to 60 seconds
+- ✅ Added pagination for browsing hundreds of tokens
+- ✅ Integrated X analysis button in new tokens table
+- ✅ Removed default filters to show all tokens
+- ✅ Added informative notes about data volume
 
-### Working
-- ✅ GeckoTerminal trending pools fetching
-- ✅ Token filtering and preview
-- ✅ Database storage with proper source attribution
-- ✅ Integration with existing analysis pipeline
-- ✅ **Standalone X Analysis** - Kimi K2 powered analysis without database storage
-  - Uses same AI model and prompt as main KROM analysis app
-  - Provides score (1-10), tier (ALPHA/SOLID/BASIC/TRASH), token type (meme/utility), legitimacy factor
-  - Real-time analysis with inline results display
-  - No database dependencies - purely exploratory
-
-### In Progress
-- 🔄 DexScreener API integration (endpoints need investigation)
-- 🔄 Automated polling via cron jobs
-- 🔄 Additional filtering criteria
-
-## Next Steps
-1. Set up automated polling (cron job every 5-15 minutes)
-2. Add DexScreener when proper endpoints are found
-3. Create dashboard to track performance by source
-4. Add more sophisticated filtering (liquidity, holder count, etc.)
+## Known Limitations
+- X analysis takes 15-25 seconds due to web scraping
+- GeckoTerminal rate limits may affect data freshness
+- Some networks have fewer new tokens than others
 
 ## Development
 
@@ -82,25 +137,21 @@ Tokens are saved to the `crypto_calls` table with:
 # Install dependencies
 npm install
 
-# Run locally
+# Run locally (port 3000 or 3001)
 npm run dev
 
 # Build
 npm run build
+
+# Deploy to Netlify
+netlify deploy --prod
 ```
 
-## Architecture Notes
-
-This app is designed as a lightweight "feeder" for the main KROM ecosystem:
-- Discovers tokens from external sources
-- Stores them in the standard format
-- Existing infrastructure handles analysis and notifications
-- No duplicate analysis code needed
-
-## Known Issues
-- DexScreener trending endpoint returns errors (need to find correct endpoint)
-- GeckoTerminal ETH trending sometimes empty (rate limiting?)
+## Deployment Notes
+- Netlify functions configured with 60-second timeout
+- Automatic deployments on git push to main branch
+- Environment variables must be set in Netlify dashboard
 
 ---
 **Last Updated**: July 28, 2025  
-**Version**: 1.0.0
+**Version**: 2.0.0 - Full X Analysis Integration
