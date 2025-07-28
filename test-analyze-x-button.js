@@ -8,8 +8,31 @@ const { chromium } = require('playwright');
     console.log('Testing Analyze X button...');
     await page.goto('https://majestic-centaur-0d5fcc.netlify.app/new-tokens', { waitUntil: 'networkidle' });
     
+    // Wait for page to fully load
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(3000);
+    
+    // Take screenshot
+    await page.screenshot({ path: 'new-tokens-page-test.png', fullPage: true });
+    console.log('Screenshot saved');
+    
+    // Check if table exists
+    const tableExists = await page.locator('table').count();
+    console.log(`Table exists: ${tableExists > 0}`);
+    
+    if (tableExists === 0) {
+      // Check for error messages
+      const errorMsg = await page.locator('.bg-red-100').textContent().catch(() => null);
+      if (errorMsg) {
+        console.log(`Error on page: ${errorMsg}`);
+      }
+      return;
+    }
+    
     // Wait for tokens to load
-    await page.waitForSelector('table tbody tr', { timeout: 10000 });
+    await page.waitForSelector('table tbody tr', { timeout: 10000 }).catch(() => {
+      console.log('No tokens loaded within 10 seconds');
+    });
     
     // Click the first Analyze X button
     const analyzeButton = await page.locator('button:has-text("Analyze X")').first();

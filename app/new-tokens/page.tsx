@@ -50,7 +50,7 @@ type SortOrder = 'asc' | 'desc';
 
 export default function NewTokensPage() {
   const [tokens, setTokens] = useState<NewToken[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Start with loading true
   const [error, setError] = useState('');
   const [filters, setFilters] = useState<Filters>({
     network: 'solana',
@@ -87,6 +87,8 @@ export default function NewTokensPage() {
   const [xAnalysisResults, setXAnalysisResults] = useState<{[key: string]: XAnalysisResult}>({});
 
   const fetchNewTokens = async (page = 1, fetchAll = false) => {
+    console.log('fetchNewTokens called:', { page, fetchAll });
+    
     if (fetchAll) {
       setFetchingAllPages(true);
       setPagesFetched(0);
@@ -126,8 +128,9 @@ export default function NewTokensPage() {
       } else {
         setError(data.error || 'Failed to fetch new tokens');
       }
-    } catch {
-      setError('Failed to fetch data');
+    } catch (err) {
+      console.error('fetchNewTokens error:', err);
+      setError('Failed to fetch data: ' + (err instanceof Error ? err.message : 'Unknown error'));
     }
     
     if (fetchAll) {
@@ -138,11 +141,15 @@ export default function NewTokensPage() {
   };
 
   useEffect(() => {
-    if (sortAcrossAllPages) {
-      fetchNewTokens(1, true); // Fetch all pages when enabled
-    } else {
-      fetchNewTokens(1); // Reset to page 1 when filters change
-    }
+    const timeoutId = setTimeout(() => {
+      if (sortAcrossAllPages) {
+        fetchNewTokens(1, true); // Fetch all pages when enabled
+      } else {
+        fetchNewTokens(1); // Reset to page 1 when filters change
+      }
+    }, 100); // Small delay to prevent rapid re-renders
+    
+    return () => clearTimeout(timeoutId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.network, filters.hours, filters.min_volume, filters.min_liquidity, filters.min_buyers, sortAcrossAllPages]);
 
