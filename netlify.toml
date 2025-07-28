@@ -2,7 +2,13 @@
   command = "npm run build"
   publish = ".next"
 
-[functions]
+[functions."*.js"]
+  timeout = 60
+
+[functions."*/route.js"]
+  timeout = 60
+
+[functions."**/*.js"]
   timeout = 60
 
 [[plugins]]
