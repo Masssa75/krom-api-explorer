@@ -45,7 +45,13 @@ export async function POST(request: Request): Promise<Response> {
       console.error('API Error:', errorText);
       return NextResponse.json({
         success: false,
-        error: `API failed: ${openRouterResponse.status} - ${errorText}`
+        error: `API failed: ${openRouterResponse.status} - ${errorText}`,
+        debug: {
+          apiKeyExists: !!process.env.OPEN_ROUTER_API_KEY,
+          apiKeyLength: process.env.OPEN_ROUTER_API_KEY?.length,
+          apiKeyPrefix: process.env.OPEN_ROUTER_API_KEY?.substring(0, 15),
+          allEnvKeys: Object.keys(process.env).filter(key => key.includes('OPEN') || key.includes('API'))
+        }
       });
     }
     
