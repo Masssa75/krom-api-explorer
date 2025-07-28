@@ -58,7 +58,7 @@ export async function POST(request: Request) {
       processed: 0,
       skipped: 0,
       errors: 0,
-      tokens: [] as any[]
+      tokens: [] as Array<{symbol: string; contract: string; volume_24h: number; age_days: string}>
     };
 
     // Process each pool
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
         const baseTokenId = pool.relationships.base_token.data.id;
         // GeckoTerminal IDs are like "solana_CONTRACT_ADDRESS"
         const contractAddress = baseTokenId.split('_')[1];
-        const [tokenSymbol, quoteCurrency] = pool.attributes.name.split(' / ');
+        const [tokenSymbol] = pool.attributes.name.split(' / ');
         
         // Skip if it's a standard pair token (SOL, USDC, etc)
         if (['SOL', 'USDC', 'USDT', 'ETH', 'BTC'].includes(tokenSymbol)) {

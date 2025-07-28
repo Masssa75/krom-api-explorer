@@ -15,7 +15,17 @@ export default function Home() {
   const [geckoTokens, setGeckoTokens] = useState<TokenInfo[]>([]);
   const [loading, setLoading] = useState<string>('');
   const [error, setError] = useState<string>('');
-  const [processResults, setProcessResults] = useState<any>(null);
+  interface ProcessResults {
+    success: boolean;
+    results?: {
+      processed: number;
+      skipped: number;
+      errors: number;
+      tokens: Array<{symbol: string; contract: string; volume_24h: number; age_days: string}>;
+    };
+    message?: string;
+  }
+  const [processResults, setProcessResults] = useState<ProcessResults | null>(null);
 
   const fetchAndPreview = async () => {
     setLoading('preview');
@@ -59,7 +69,7 @@ export default function Home() {
         
         setGeckoTokens(tokens);
       }
-    } catch (err) {
+    } catch {
       setError('Failed to fetch trending tokens');
     }
     setLoading('');
@@ -146,7 +156,7 @@ export default function Home() {
           <div className="bg-white p-6 rounded-lg shadow mb-8">
             <h2 className="text-2xl font-bold mb-4">Step 2: Save to Database</h2>
             <p className="mb-4 text-gray-600">
-              This will save new tokens to the crypto_calls table with source='geckoterminal'.
+              This will save new tokens to the crypto_calls table with source=&apos;geckoterminal&apos;.
               Existing tokens will be skipped.
             </p>
             <button
@@ -167,14 +177,14 @@ export default function Home() {
         )}
 
         {/* Step 3: Instructions */}
-        {processResults?.results?.processed > 0 && (
+        {processResults?.results && processResults.results.processed > 0 && (
           <div className="bg-white p-6 rounded-lg shadow">
             <h2 className="text-2xl font-bold mb-4">Step 3: Run X Analysis</h2>
             <p className="mb-2">Now that tokens are saved, you can:</p>
             <ol className="list-decimal list-inside space-y-2 text-gray-700">
               <li>Go to your Supabase dashboard</li>
               <li>Run the <code className="bg-gray-100 px-1 rounded">crypto-x-analyzer-nitter</code> edge function</li>
-              <li>It will process tokens with source='geckoterminal' that don't have X analysis yet</li>
+              <li>It will process tokens with source=&apos;geckoterminal&apos; that don&apos;t have X analysis yet</li>
               <li>High-scoring tokens (5+) will trigger Telegram notifications automatically</li>
             </ol>
             
