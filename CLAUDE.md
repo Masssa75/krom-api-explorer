@@ -127,7 +127,36 @@ function calculateQualityScore(attributes, ageHours) {
 - ✅ Added informative notes about data volume
 - ✅ Implemented multi-page fetching for global sorting (up to 10K tokens)
 - ✅ Fixed client-side errors preventing page load
-- ⚠️ X analysis currently failing - investigating API issues
+- ✅ Added "Latest 200 Pools" page for real-time monitoring
+- ⚠️ X analysis currently failing - needs investigation
+
+## Important Discoveries (July 28, 2025)
+
+### GeckoTerminal API Behavior
+- **Fixed window**: Always shows exactly 200 pools (10 pages × 20 pools)
+- **Time coverage**: Only ~8 minutes of the most recent pools
+- **Update rate**: ~40 new pools per minute on Solana
+- **No history**: Cannot fetch pools older than the current 200-pool window
+- **Filtering limitation**: Filters only apply to the current 200 pools, not historical data
+
+### Token Launch Rate on Solana
+- **~18 new tokens per minute**
+- **~1,075 new tokens per hour**
+- **~25,800 new tokens per day** (estimated)
+- Only seeing 0.03% of daily launches in the API at any given time
+
+### Pages Overview
+1. **`/new-tokens`**: Filtered view with advanced options
+   - Supports filtering by age, volume, liquidity, buyers
+   - "Sort across all pages" fetches up to 10K tokens for global sorting
+   - Best for finding specific types of tokens
+
+2. **`/latest-pools`**: Unfiltered real-time view (NEW)
+   - Shows ALL 200 pools from the API
+   - No filters - complete feed
+   - Auto-refresh every 30 seconds
+   - Highlights pools < 2 minutes old
+   - Best for real-time monitoring
 
 ## Known Limitations
 - X analysis takes 15-25 seconds due to web scraping
@@ -135,6 +164,7 @@ function calculateQualityScore(attributes, ageHours) {
 - Cannot fetch historical data beyond what's currently in the API
 - Estimated 25,000+ tokens launched on Solana daily (based on extrapolation)
 - Some networks have fewer new tokens than others
+- X analysis may fail due to rate limits or ScraperAPI issues
 
 ## Development
 

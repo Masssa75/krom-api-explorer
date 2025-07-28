@@ -39,7 +39,7 @@ type SortOrder = 'asc' | 'desc';
 
 export default function LatestPoolsPage() {
   const [pools, setPools] = useState<LatestPool[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Start with loading true
   const [error, setError] = useState('');
   const [sortField, setSortField] = useState<SortField>('age_seconds');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
@@ -81,6 +81,12 @@ export default function LatestPoolsPage() {
         });
         
         const res = await fetch(`/api/geckoterminal/new-pools?${params}`);
+        
+        if (!res.ok) {
+          console.error(`Failed to fetch page ${page}: ${res.status}`);
+          break;
+        }
+        
         const data = await res.json();
         
         if (data.success && data.data) {
@@ -109,7 +115,11 @@ export default function LatestPoolsPage() {
   };
 
   useEffect(() => {
-    fetchAllPools();
+    const timeoutId = setTimeout(() => {
+      fetchAllPools();
+    }, 100); // Small delay to prevent issues
+    
+    return () => clearTimeout(timeoutId);
   }, []);
 
   useEffect(() => {
