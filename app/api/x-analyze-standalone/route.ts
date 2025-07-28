@@ -120,7 +120,7 @@ function parseTweetsFromNitter(html: string): string[] {
   const tweets: string[] = [];
   
   // Simple regex to extract tweet content (this could be improved)
-  const tweetRegex = /<div class="tweet-content[^>]*>(.*?)<\/div>/gs;
+  const tweetRegex = /<div class="tweet-content[^>]*>(.*?)<\/div>/g;
   let match;
   
   while ((match = tweetRegex.exec(html)) !== null && tweets.length < 10) {
@@ -171,11 +171,11 @@ function parseClaudeAnalysis(analysisText: string, tweets: string[]): {
     const tier = tierMatch ? tierMatch[1].toUpperCase() : 'TRASH';
 
     // Extract reasoning
-    const reasoningMatch = analysisText.match(/REASONING:\s*(.*?)(?=\nBEST_TWEET:|$)/s);
+    const reasoningMatch = analysisText.match(/REASONING:\s*(.*?)(?=\nBEST_TWEET:|$)/);
     const reasoning = reasoningMatch ? reasoningMatch[1].trim() : 'Analysis could not be parsed properly.';
 
     // Extract best tweet
-    const bestTweetMatch = analysisText.match(/BEST_TWEET:\s*(.*?)$/s);
+    const bestTweetMatch = analysisText.match(/BEST_TWEET:\s*(.*?)$/);
     const bestTweet = bestTweetMatch && bestTweetMatch[1].trim() !== 'None' 
       ? bestTweetMatch[1].trim() 
       : undefined;
