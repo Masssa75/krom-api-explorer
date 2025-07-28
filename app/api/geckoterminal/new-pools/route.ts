@@ -75,13 +75,16 @@ export async function GET(request: Request) {
       if (poolCreated < cutoffTime) return false;
       
       // Filter by volume
-      if (volume24h < options.min_volume) return false;
+      const minVolume = options.min_volume || 0;
+      if (volume24h < minVolume) return false;
       
       // Filter by liquidity
-      if (reserveUsd < options.min_liquidity) return false;
+      const minLiquidity = options.min_liquidity || 0;
+      if (reserveUsd < minLiquidity) return false;
       
       // Filter by buyer activity
-      if (buyers24h < options.min_buyers) return false;
+      const minBuyers = options.min_buyers || 0;
+      if (buyers24h < minBuyers) return false;
       
       return true;
     });
