@@ -16,6 +16,8 @@ interface XAnalysisResult {
   analysis?: {
     score: number;
     tier: string;
+    token_type: string;
+    legitimacy_factor: string;
     reasoning: string;
     best_tweet?: string;
     tweets_found: number;
