@@ -11,6 +11,8 @@ interface XAnalysisResult {
   analysis?: {
     score: number;
     tier: string;
+    token_type: string;
+    legitimacy_factor: string;
     reasoning: string;
     best_tweet?: string;
     tweets_found: number;
@@ -57,6 +59,8 @@ export async function POST(request: Request): Promise<Response> {
         analysis: {
           score: 1,
           tier: 'TRASH',
+          token_type: 'meme',
+          legitimacy_factor: 'Low',
           reasoning: 'No tweets found about this token on X/Twitter. This indicates very low social presence and community engagement.',
           tweets_found: 0,
           search_query: searchQuery
@@ -64,38 +68,44 @@ export async function POST(request: Request): Promise<Response> {
       });
     }
 
-    // Step 3: Analyze tweets with Claude (using your existing prompt style)
+    // Step 3: Analyze tweets with Kimi K2 (using same logic as main app)
     const analysisPrompt = createXAnalysisPrompt(symbol, contract_address, tweets);
     
-    const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
+    const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY!,
-        'anthropic-version': '2023-06-01'
+        'Authorization': `Bearer ${process.env.OPEN_ROUTER_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'claude-3-haiku-20240307',
-        max_tokens: 1000,
-        messages: [{
-          role: 'user',
-          content: analysisPrompt
-        }]
+        model: 'moonshotai/kimi-k2', // Use paid Kimi K2 model
+        messages: [
+          {
+            role: 'system',
+            content: analysisPrompt
+          },
+          {
+            role: 'user',
+            content: `Analyze these tweets about ${symbol} token (contract: ${contract_address}):`
+          }
+        ],
+        temperature: 0,
+        max_tokens: 1000
       })
     });
 
-    if (!claudeResponse.ok) {
+    if (!openRouterResponse.ok) {
       return NextResponse.json({
         success: false,
-        error: `Claude API failed: ${claudeResponse.status}`
+        error: `Kimi K2 API failed: ${openRouterResponse.status}`
       }, { status: 500 });
     }
 
-    const claudeResult = await claudeResponse.json();
-    const analysisText = claudeResult.content[0].text;
+    const openRouterResult = await openRouterResponse.json();
+    const analysisText = openRouterResult.choices[0].message.content;
 
-    // Step 4: Parse Claude's response
-    const analysis = parseClaudeAnalysis(analysisText, tweets);
+    // Step 4: Parse Kimi K2's response
+    const analysis = parseKimiAnalysis(analysisText, tweets);
 
     return NextResponse.json({
       success: true,
@@ -138,58 +148,99 @@ function parseTweetsFromNitter(html: string): string[] {
 }
 
 function createXAnalysisPrompt(symbol: string, contractAddress: string, tweets: string[]): string {
-  return `Analyze the social media presence for cryptocurrency token ${symbol} (contract: ${contractAddress}) based on these X/Twitter posts:
+  const prompt = `You are an expert crypto analyst evaluating Twitter/X social media data about cryptocurrency tokens.
 
-${tweets.slice(0, 5).map((tweet, i) => `Tweet ${i + 1}: ${tweet}`).join('\n\n')}
+IMPORTANT: You are analyzing historical tweets that were captured at the time of the original call. These tweets provide social context about the token.
 
-Rate this token's X/Twitter presence on a scale of 1-10 based on:
-- Community engagement and discussion quality
-- Legitimacy indicators vs spam/bot activity  
-- Development updates and project communication
-- Organic growth vs artificial hype
+Analyze the provided tweets and score the token's social media presence from 1-10 based on:
 
-Respond in this exact format:
-SCORE: [1-10]
-TIER: [ALPHA/SOLID/BASIC/TRASH]
-REASONING: [2-3 sentences explaining the score]
-BEST_TWEET: [The most informative/legitimate tweet, or "None" if all are poor quality]`;
+SCORING CRITERIA:
+- Community engagement quality and authenticity
+- Team/developer transparency and activity  
+- Legitimate partnerships or endorsements
+- Technical discussions and development updates
+- Warning signs (bot activity, pump rhetoric, fake hype)
+- Overall community sentiment and growth potential
+
+SCORE GUIDE:
+1-3: TRASH - Obvious scam, heavy bot activity, pump and dump rhetoric, no real community
+4-5: BASIC - Limited genuine activity, some red flags, unclear value proposition
+6-7: SOLID - Good community engagement, active development, some positive signals
+8-10: ALPHA - Exceptional community, verified partnerships, strong development activity
+
+For each token, provide:
+1. Score (1-10)
+2. Token Type: "meme" or "utility" based on social media presence
+3. Legitimacy Factor: "Low", "Medium", or "High"
+4. Best Tweet: The single most informative/relevant tweet (copy exact text)
+5. Key Observations: 2-3 bullet points about what you found (max 20 words each)
+6. Reasoning: Brief explanation of your score (2-3 sentences)
+
+TOKEN TYPE CLASSIFICATION:
+- Meme: Community-driven, humor/viral focus, price speculation, moon/rocket talk, animal themes
+- Utility: Technical discussions, real use cases, development updates, partnerships, solving problems
+- Hybrid: Shows both meme culture AND actual utility/development
+
+Remember: Focus on the quality of engagement and legitimate development activity, not just volume of tweets.`;
+
+  const tweetTexts = tweets
+    .filter(tweet => tweet && tweet.length > 20)
+    .slice(0, 5)
+    .map((tweet, i) => `Tweet ${i + 1}: ${tweet}`)
+    .join('\n');
+
+  return `${prompt}\n\nAnalyze these tweets about ${symbol} token (contract: ${contractAddress}):\n\n${tweetTexts}`;
 }
 
-function parseClaudeAnalysis(analysisText: string, tweets: string[]): {
+function parseKimiAnalysis(analysisText: string, tweets: string[]): {
   score: number;
   tier: string;
+  token_type: string;
+  legitimacy_factor: string;
   reasoning: string;
   best_tweet?: string;
 } {
   try {
     // Extract score
-    const scoreMatch = analysisText.match(/SCORE:\s*(\d+)/i);
+    const scoreMatch = analysisText.match(/score[:\s]+(\d+)/i);
     const score = scoreMatch ? parseInt(scoreMatch[1]) : 1;
 
-    // Extract tier  
-    const tierMatch = analysisText.match(/TIER:\s*(ALPHA|SOLID|BASIC|TRASH)/i);
-    const tier = tierMatch ? tierMatch[1].toUpperCase() : 'TRASH';
+    // Extract token type
+    const tokenTypeMatch = analysisText.match(/token\s*type[:\s]+(meme|utility)/i);
+    const tokenType = tokenTypeMatch ? tokenTypeMatch[1].toLowerCase() : 'meme';
 
-    // Extract reasoning
-    const reasoningMatch = analysisText.match(/REASONING:\s*(.*?)(?=\nBEST_TWEET:|$)/);
-    const reasoning = reasoningMatch ? reasoningMatch[1].trim() : 'Analysis could not be parsed properly.';
+    // Extract legitimacy factor
+    const legitimacyMatch = analysisText.match(/legitimacy\s*factor[:\s]+(low|medium|high)/i);
+    const legitimacyFactor = legitimacyMatch ? legitimacyMatch[1].charAt(0).toUpperCase() + legitimacyMatch[1].slice(1) : 'Low';
 
     // Extract best tweet
-    const bestTweetMatch = analysisText.match(/BEST_TWEET:\s*(.*?)$/);
-    const bestTweet = bestTweetMatch && bestTweetMatch[1].trim() !== 'None' 
-      ? bestTweetMatch[1].trim() 
-      : undefined;
+    const bestTweetMatch = analysisText.match(/best\s*tweet[:\s]*(.+?)(?=\n|key\s*observations|$)/i);
+    const bestTweet = bestTweetMatch ? bestTweetMatch[1].trim() : null;
+
+    // Extract reasoning
+    const reasoningMatch = analysisText.match(/reasoning[:\s]*(.+?)$/i);
+    const reasoning = reasoningMatch ? reasoningMatch[1].trim() : analysisText;
+
+    // Determine tier based on score
+    let tier = 'TRASH';
+    if (score >= 8) tier = 'ALPHA';
+    else if (score >= 6) tier = 'SOLID';
+    else if (score >= 4) tier = 'BASIC';
 
     return {
       score: Math.max(1, Math.min(10, score)), // Ensure score is 1-10
       tier,
+      token_type: tokenType,
+      legitimacy_factor: legitimacyFactor,
       reasoning,
-      best_tweet: bestTweet
+      best_tweet: bestTweet && bestTweet !== 'None' ? bestTweet : undefined
     };
   } catch (error) {
     return {
       score: 1,
       tier: 'TRASH',
+      token_type: 'meme',
+      legitimacy_factor: 'Low',
       reasoning: 'Failed to parse analysis results properly.'
     };
   }
