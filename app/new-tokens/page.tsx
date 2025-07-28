@@ -63,7 +63,21 @@ export default function NewTokensPage() {
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [analyzingTokens, setAnalyzingTokens] = useState<Set<string>>(new Set());
-  const [xAnalysisResults, setXAnalysisResults] = useState<{[key: string]: any}>({});
+  interface XAnalysisResult {
+    success: boolean;
+    analysis?: {
+      score: number;
+      tier: string;
+      token_type: string;
+      legitimacy_factor: string;
+      reasoning: string;
+      best_tweet?: string;
+      tweets_found: number;
+      search_query: string;
+    };
+    error?: string;
+  }
+  const [xAnalysisResults, setXAnalysisResults] = useState<{[key: string]: XAnalysisResult}>({});
 
   const fetchNewTokens = async () => {
     setLoading(true);
