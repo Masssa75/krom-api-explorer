@@ -163,7 +163,7 @@ export default function NewTokensPage() {
     return `$${num.toFixed(2)}`;
   };
 
-  const formatPercentage = (val: string): JSX.Element => {
+  const formatPercentage = (val: string) => {
     const num = parseFloat(val) || 0;
     const color = num > 0 ? 'text-green-600' : num < 0 ? 'text-red-600' : 'text-gray-600';
     return <span className={color}>{num > 0 ? '+' : ''}{num.toFixed(2)}%</span>;

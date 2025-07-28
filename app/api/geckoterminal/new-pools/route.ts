@@ -160,7 +160,7 @@ export async function GET(request: Request) {
     });
     
     // Sort by quality score
-    enrichedPools.sort((a, b) => b.quality_score - a.quality_score);
+    enrichedPools.sort((a: {quality_score: number}, b: {quality_score: number}) => b.quality_score - a.quality_score);
     
     return NextResponse.json({
       success: true,
