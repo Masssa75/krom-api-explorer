@@ -71,15 +71,26 @@ export async function POST(request: Request): Promise<Response> {
     // Step 3: Analyze tweets with Kimi K2 (using same logic as main app)
     const analysisPrompt = createXAnalysisPrompt(symbol, contract_address, tweets);
     
-    // Debug logging
-    console.log('OpenRouter API Key exists:', !!process.env.OPEN_ROUTER_API_KEY);
-    console.log('API Key length:', process.env.OPEN_ROUTER_API_KEY?.length || 0);
+    // Debug logging and clean API key
+    const apiKey = process.env.OPEN_ROUTER_API_KEY?.trim();
+    console.log('OpenRouter API Key exists:', !!apiKey);
+    console.log('API Key length:', apiKey?.length || 0);
+    console.log('API Key starts with sk-or-v1:', apiKey?.startsWith('sk-or-v1-'));
+    
+    if (!apiKey) {
+      return NextResponse.json({
+        success: false,
+        error: 'OpenRouter API key not found in environment variables'
+      }, { status: 500 });
+    }
     
     const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPEN_ROUTER_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
+        'HTTP-Referer': 'https://majestic-centaur-0d5fcc.netlify.app',
+        'X-Title': 'KROM API Explorer'
       },
       body: JSON.stringify({
         model: 'moonshotai/kimi-k2', // Use paid Kimi K2 model
