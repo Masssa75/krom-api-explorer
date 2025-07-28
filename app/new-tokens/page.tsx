@@ -55,14 +55,16 @@ export default function NewTokensPage() {
   const [filters, setFilters] = useState<Filters>({
     network: 'solana',
     hours: 24,
-    min_volume: 1000,
-    min_liquidity: 5000,
-    min_buyers: 3
+    min_volume: 0,
+    min_liquidity: 0,
+    min_buyers: 0
   });
   const [sortField, setSortField] = useState<SortField>('quality_score');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [analyzingTokens, setAnalyzingTokens] = useState<Set<string>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalTokens, setTotalTokens] = useState(0);
   interface XAnalysisResult {
     success: boolean;
     analysis?: {
@@ -79,7 +81,7 @@ export default function NewTokensPage() {
   }
   const [xAnalysisResults, setXAnalysisResults] = useState<{[key: string]: XAnalysisResult}>({});
 
-  const fetchNewTokens = async () => {
+  const fetchNewTokens = async (page = 1) => {
     setLoading(true);
     setError('');
     
@@ -89,7 +91,8 @@ export default function NewTokensPage() {
         hours: filters.hours.toString(),
         min_volume: filters.min_volume.toString(),
         min_liquidity: filters.min_liquidity.toString(),
-        min_buyers: filters.min_buyers.toString()
+        min_buyers: filters.min_buyers.toString(),
+        page: page.toString()
       });
       
       const res = await fetch(`/api/geckoterminal/new-pools?${params}`);
@@ -97,6 +100,8 @@ export default function NewTokensPage() {
       
       if (data.success) {
         setTokens(data.data || []);
+        setTotalTokens(data.total_fetched || data.data?.length || 0);
+        setCurrentPage(page);
       } else {
         setError(data.error || 'Failed to fetch new tokens');
       }
@@ -108,17 +113,17 @@ export default function NewTokensPage() {
   };
 
   useEffect(() => {
-    fetchNewTokens();
+    fetchNewTokens(1); // Reset to page 1 when filters change
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
   useEffect(() => {
     if (autoRefresh) {
-      const interval = setInterval(fetchNewTokens, 30000); // Refresh every 30 seconds
+      const interval = setInterval(() => fetchNewTokens(currentPage), 30000); // Refresh every 30 seconds
       return () => clearInterval(interval);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoRefresh, filters]);
+  }, [autoRefresh, filters, currentPage]);
 
   const getSortedTokens = () => {
     const sorted = [...tokens].sort((a, b) => {
@@ -345,13 +350,43 @@ export default function NewTokensPage() {
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="p-4 border-b bg-gray-50">
               <div className="flex justify-between items-center">
-                <h3 className="font-semibold">Found {tokens.length} new tokens</h3>
-                <button
-                  onClick={fetchNewTokens}
-                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-sm"
-                >
-                  Refresh
-                </button>
+                <div>
+                  <h3 className="font-semibold">
+                    Found {tokens.length} new tokens 
+                    {totalTokens > tokens.length && (
+                      <span className="text-sm font-normal text-gray-600">
+                        {' '}(Page {currentPage}, showing filtered results from {totalTokens} total)
+                      </span>
+                    )}
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Note: GeckoTerminal has hundreds of new tokens. Adjust filters or browse pages to see more.
+                  </p>
+                </div>
+                <div className="flex gap-2 items-center">
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => fetchNewTokens(currentPage - 1)}
+                      disabled={currentPage <= 1}
+                      className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      ← Prev
+                    </button>
+                    <span className="px-3 py-1 text-sm">Page {currentPage}</span>
+                    <button
+                      onClick={() => fetchNewTokens(currentPage + 1)}
+                      className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300"
+                    >
+                      Next →
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => fetchNewTokens(currentPage)}
+                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-sm"
+                  >
+                    Refresh
+                  </button>
+                </div>
               </div>
             </div>
             

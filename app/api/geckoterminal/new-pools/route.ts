@@ -16,9 +16,9 @@ export async function GET(request: Request) {
   const options: NewPoolsQuery = {
     network: searchParams.get('network') || 'solana',
     hours: parseInt(searchParams.get('hours') || '24', 10) || 24,
-    min_volume: parseFloat(searchParams.get('min_volume') || '1000') || 1000,
-    min_liquidity: parseFloat(searchParams.get('min_liquidity') || '5000') || 5000,
-    min_buyers: parseInt(searchParams.get('min_buyers') || '3', 10) || 3,
+    min_volume: parseFloat(searchParams.get('min_volume') || '0') || 0,
+    min_liquidity: parseFloat(searchParams.get('min_liquidity') || '0') || 0,
+    min_buyers: parseInt(searchParams.get('min_buyers') || '0', 10) || 0,
     page: parseInt(searchParams.get('page') || '1', 10) || 1,
     include_tokens: searchParams.get('include_tokens') === 'true'
   };
