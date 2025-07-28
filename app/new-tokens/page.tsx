@@ -62,6 +62,8 @@ export default function NewTokensPage() {
   const [sortField, setSortField] = useState<SortField>('quality_score');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [autoRefresh, setAutoRefresh] = useState(false);
+  const [analyzingTokens, setAnalyzingTokens] = useState<Set<string>>(new Set());
+  const [xAnalysisResults, setXAnalysisResults] = useState<{[key: string]: any}>({});
 
   const fetchNewTokens = async () => {
     setLoading(true);
@@ -174,6 +176,37 @@ export default function NewTokensPage() {
     if (score >= 50) return 'bg-yellow-100 text-yellow-800';
     if (score >= 30) return 'bg-orange-100 text-orange-800';
     return 'bg-red-100 text-red-800';
+  };
+
+  const analyzeX = async (token: NewToken) => {
+    const tokenId = token.base_token_contract;
+    setAnalyzingTokens(prev => new Set(prev).add(tokenId));
+    
+    try {
+      const res = await fetch('/api/x-analyze-standalone', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contract_address: token.base_token_contract,
+          symbol: token.name.split(' / ')[0],
+          network: token.network
+        })
+      });
+      
+      const result = await res.json();
+      setXAnalysisResults(prev => ({
+        ...prev,
+        [tokenId]: result
+      }));
+    } catch (err) {
+      console.error('X analysis failed:', err);
+    }
+    
+    setAnalyzingTokens(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(tokenId);
+      return newSet;
+    });
   };
 
   return (
@@ -413,23 +446,60 @@ export default function NewTokensPage() {
                         {formatNumber(token.fdv_usd)}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <div className="flex gap-2 justify-center">
-                          <a
-                            href={`https://www.geckoterminal.com/${token.network}/pools/${token.address}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline text-sm"
-                          >
-                            Chart
-                          </a>
-                          <a
-                            href={`https://dexscreener.com/${token.network}/${token.base_token_contract}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-purple-600 hover:underline text-sm"
-                          >
-                            DexS
-                          </a>
+                        <div className="flex flex-col gap-2">
+                          <div className="flex gap-2 justify-center">
+                            <a
+                              href={`https://www.geckoterminal.com/${token.network}/pools/${token.address}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline text-sm"
+                            >
+                              Chart
+                            </a>
+                            <a
+                              href={`https://dexscreener.com/${token.network}/${token.base_token_contract}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-purple-600 hover:underline text-sm"
+                            >
+                              DexS
+                            </a>
+                          </div>
+                          {(() => {
+                            const tokenId = token.base_token_contract;
+                            const xResult = xAnalysisResults[tokenId];
+                            const isAnalyzing = analyzingTokens.has(tokenId);
+                            
+                            if (xResult?.success) {
+                              return (
+                                <div className="text-xs">
+                                  <span className={`inline-block px-2 py-1 rounded font-bold ${
+                                    xResult.analysis.score >= 7 ? 'bg-green-100 text-green-800' :
+                                    xResult.analysis.score >= 5 ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-red-100 text-red-800'
+                                  }`}>
+                                    X: {xResult.analysis.score}/10
+                                  </span>
+                                  <div className="text-gray-600 mt-1">
+                                    {xResult.analysis.tweets_found} tweets
+                                  </div>
+                                </div>
+                              );
+                            } else if (isAnalyzing) {
+                              return (
+                                <span className="text-blue-600 text-xs">Analyzing X...</span>
+                              );
+                            } else {
+                              return (
+                                <button
+                                  onClick={() => analyzeX(token)}
+                                  className="bg-purple-500 text-white px-2 py-1 rounded text-xs hover:bg-purple-600"
+                                >
+                                  Analyze X
+                                </button>
+                              );
+                            }
+                          })()}
                         </div>
                       </td>
                     </tr>
