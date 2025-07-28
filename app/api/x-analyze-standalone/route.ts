@@ -84,8 +84,12 @@ export async function POST(request: Request): Promise<Response> {
       }, { status: 500 });
     }
     
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
+    
     const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
+      signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
@@ -105,9 +109,11 @@ export async function POST(request: Request): Promise<Response> {
           }
         ],
         temperature: 0,
-        max_tokens: 1000
+        max_tokens: 500
       })
     });
+    
+    clearTimeout(timeoutId);
 
     if (!openRouterResponse.ok) {
       const errorBody = await openRouterResponse.text();
