@@ -28,7 +28,7 @@ export async function GET(request: Request) {
   const maxPages = Math.min(parseInt(searchParams.get('max_pages') || '50', 10), 500); // Cap at 500 for safety
   
   try {
-    let allPools: any[] = [];
+    let allPools: PoolData[] = [];
     
     if (fetchAll) {
       // Fetch multiple pages in batches to handle large requests
