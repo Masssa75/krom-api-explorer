@@ -59,6 +59,11 @@ Tokens are saved to the `crypto_calls` table with:
 - ✅ Token filtering and preview
 - ✅ Database storage with proper source attribution
 - ✅ Integration with existing analysis pipeline
+- ✅ **Standalone X Analysis** - Kimi K2 powered analysis without database storage
+  - Uses same AI model and prompt as main KROM analysis app
+  - Provides score (1-10), tier (ALPHA/SOLID/BASIC/TRASH), token type (meme/utility), legitimacy factor
+  - Real-time analysis with inline results display
+  - No database dependencies - purely exploratory
 
 ### In Progress
 - 🔄 DexScreener API integration (endpoints need investigation)

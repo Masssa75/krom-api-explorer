@@ -125,24 +125,27 @@ export async function POST(request: Request): Promise<Response> {
   }
 }
 
-// Helper functions (simplified versions of your edge function logic)
+// Helper functions (same logic as working edge functions)
 function parseTweetsFromNitter(html: string): string[] {
   const tweets: string[] = [];
   
-  // Simple regex to extract tweet content (this could be improved)
-  const tweetRegex = /<div class="tweet-content[^>]*>(.*?)<\/div>/g;
-  let match;
-  
-  while ((match = tweetRegex.exec(html)) !== null && tweets.length < 10) {
-    const tweetContent = match[1]
-      .replace(/<[^>]*>/g, '') // Remove HTML tags
-      .replace(/&[^;]*;/g, ' ') // Remove HTML entities
+  // Use the same robust pattern as working edge functions
+  const tweetMatches = html.matchAll(/<div class="tweet-content[^"]*"[^>]*>([\s\S]*?)<\/div>/gi);
+
+  for (const match of tweetMatches) {
+    const content = match[1]
+      .replace(/<[^>]*>/g, ' ') // Remove HTML tags
+      .replace(/\s+/g, ' ') // Normalize whitespace
       .trim();
     
-    if (tweetContent.length > 20) { // Filter out very short content
-      tweets.push(tweetContent);
+    if (content && content.length > 20) {
+      tweets.push(content);
     }
+    
+    if (tweets.length >= 10) break; // Get up to 10 tweets
   }
+
+  console.log(`Found ${tweets.length} tweets for analysis`);
   
   return tweets;
 }
