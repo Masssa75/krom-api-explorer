@@ -5,8 +5,10 @@ export async function POST(request: Request): Promise<Response> {
     const { test_message = 'Hello world' } = await request.json();
     
     console.log('Testing Kimi K2 API with exact same implementation as working app...');
+    console.log('All env vars:', Object.keys(process.env).filter(key => key.includes('OPEN') || key.includes('API')));
     console.log('API Key exists:', !!process.env.OPEN_ROUTER_API_KEY);
     console.log('API Key length:', process.env.OPEN_ROUTER_API_KEY?.length);
+    console.log('API Key first 10 chars:', process.env.OPEN_ROUTER_API_KEY?.substring(0, 10));
     
     // Use EXACT same implementation as working app
     const model = 'moonshotai/kimi-k2';
