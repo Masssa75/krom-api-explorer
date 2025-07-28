@@ -48,7 +48,23 @@ export async function GET(request: Request) {
     const now = new Date();
     const cutoffTime = new Date(now.getTime() - (options.hours * 60 * 60 * 1000));
     
-    const filteredPools = data.data.filter((pool: any) => {
+    interface PoolData {
+      id: string;
+      attributes: {
+        pool_created_at: string;
+        volume_usd: { h24: string };
+        reserve_in_usd: string;
+        transactions: { h24?: { buyers: number } };
+        [key: string]: unknown;
+      };
+      relationships: {
+        base_token: { data: { id: string } };
+        quote_token: { data: { id: string } };
+        dex: { data: { id: string } };
+      };
+    }
+    
+    const filteredPools = data.data.filter((pool: PoolData) => {
       const poolCreated = new Date(pool.attributes.pool_created_at);
       const volume24h = parseFloat(pool.attributes.volume_usd.h24) || 0;
       const reserveUsd = parseFloat(pool.attributes.reserve_in_usd) || 0;
@@ -70,7 +86,7 @@ export async function GET(request: Request) {
     });
     
     // Enrich data with calculated metrics
-    const enrichedPools = filteredPools.map((pool: any) => {
+    const enrichedPools = filteredPools.map((pool: PoolData) => {
       const attributes = pool.attributes;
       const ageHours = (now.getTime() - new Date(attributes.pool_created_at).getTime()) / (1000 * 60 * 60);
       
@@ -147,7 +163,14 @@ export async function GET(request: Request) {
   }
 }
 
-function calculateQualityScore(attributes: any, ageHours: number): number {
+interface PoolAttributes {
+  volume_usd: { h24: string };
+  transactions: { h24?: { buyers: number } };
+  reserve_in_usd: string;
+  price_change_percentage: { h24: string };
+}
+
+function calculateQualityScore(attributes: PoolAttributes, ageHours: number): number {
   let score = 0;
   
   // Volume score (0-30 points)

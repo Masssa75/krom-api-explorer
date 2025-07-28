@@ -84,7 +84,7 @@ export default function NewTokensPage() {
       } else {
         setError(data.error || 'Failed to fetch new tokens');
       }
-    } catch (err) {
+    } catch {
       setError('Failed to fetch data');
     }
     
@@ -93,6 +93,7 @@ export default function NewTokensPage() {
 
   useEffect(() => {
     fetchNewTokens();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
   useEffect(() => {
@@ -100,6 +101,7 @@ export default function NewTokensPage() {
       const interval = setInterval(fetchNewTokens, 30000); // Refresh every 30 seconds
       return () => clearInterval(interval);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRefresh, filters]);
 
   const getSortedTokens = () => {
