@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 
 interface TokenInfo {
   symbol: string;
@@ -145,7 +146,12 @@ export default function Home() {
   return (
     <main className="min-h-screen p-8 bg-gray-50">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-4xl font-bold mb-8">KROM API Explorer - Manual Processing</h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-4xl font-bold">KROM API Explorer - Manual Processing</h1>
+          <Link href="/new-tokens" className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 font-semibold">
+            🚀 Discover New Tokens
+          </Link>
+        </div>
         
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
