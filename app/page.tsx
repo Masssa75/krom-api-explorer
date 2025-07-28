@@ -11,6 +11,19 @@ interface TokenInfo {
   price_usd?: string;
 }
 
+interface XAnalysisResult {
+  success: boolean;
+  analysis?: {
+    score: number;
+    tier: string;
+    reasoning: string;
+    best_tweet?: string;
+    tweets_found: number;
+    search_query: string;
+  };
+  error?: string;
+}
+
 export default function Home() {
   const [geckoTokens, setGeckoTokens] = useState<TokenInfo[]>([]);
   const [loading, setLoading] = useState<string>('');
@@ -26,6 +39,8 @@ export default function Home() {
     message?: string;
   }
   const [processResults, setProcessResults] = useState<ProcessResults | null>(null);
+  const [xAnalysisResults, setXAnalysisResults] = useState<{[key: string]: XAnalysisResult}>({});
+  const [analyzingToken, setAnalyzingToken] = useState<string>('');
 
   const fetchAndPreview = async () => {
     setLoading('preview');
@@ -98,6 +113,33 @@ export default function Home() {
     setLoading('');
   };
 
+  const analyzeXStandalone = async (token: TokenInfo) => {
+    setAnalyzingToken(token.contract);
+    setError('');
+    
+    try {
+      const res = await fetch('/api/x-analyze-standalone', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contract_address: token.contract,
+          symbol: token.symbol,
+          network: 'solana'
+        })
+      });
+      
+      const result = await res.json();
+      setXAnalysisResults(prev => ({
+        ...prev,
+        [token.contract]: result
+      }));
+    } catch (err) {
+      setError(`Failed to analyze ${token.symbol}: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+    
+    setAnalyzingToken('');
+  };
+
   return (
     <main className="min-h-screen p-8 bg-gray-50">
       <div className="max-w-7xl mx-auto">
@@ -132,18 +174,60 @@ export default function Home() {
                       <th className="border px-4 py-2">24h Volume</th>
                       <th className="border px-4 py-2">Age (days)</th>
                       <th className="border px-4 py-2">Created</th>
+                      <th className="border px-4 py-2">X Analysis</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {geckoTokens.map((token, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50">
-                        <td className="border px-4 py-2 font-mono">{token.symbol}</td>
-                        <td className="border px-4 py-2 font-mono text-xs">{token.contract.slice(0, 10)}...</td>
-                        <td className="border px-4 py-2">${(token.volume_24h / 1000).toFixed(1)}k</td>
-                        <td className="border px-4 py-2">{token.age_days}</td>
-                        <td className="border px-4 py-2">{token.pool_created}</td>
-                      </tr>
-                    ))}
+                    {geckoTokens.map((token, idx) => {
+                      const xResult = xAnalysisResults[token.contract];
+                      return (
+                        <tr key={idx} className="hover:bg-gray-50">
+                          <td className="border px-4 py-2 font-mono">{token.symbol}</td>
+                          <td className="border px-4 py-2 font-mono text-xs">{token.contract.slice(0, 10)}...</td>
+                          <td className="border px-4 py-2">${(token.volume_24h / 1000).toFixed(1)}k</td>
+                          <td className="border px-4 py-2">{token.age_days}</td>
+                          <td className="border px-4 py-2">{token.pool_created}</td>
+                          <td className="border px-4 py-2">
+                            {xResult ? (
+                              xResult.success ? (
+                                <div>
+                                  <span className={`inline-block px-2 py-1 rounded text-xs font-bold ${
+                                    xResult.analysis!.score >= 7 ? 'bg-green-100 text-green-800' :
+                                    xResult.analysis!.score >= 5 ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-red-100 text-red-800'
+                                  }`}>
+                                    {xResult.analysis!.score}/10 - {xResult.analysis!.tier}
+                                  </span>
+                                  <div className="text-xs text-gray-600 mt-1">
+                                    {xResult.analysis!.tweets_found} tweets found
+                                  </div>
+                                  <details className="mt-1">
+                                    <summary className="text-xs text-blue-600 cursor-pointer">View Details</summary>
+                                    <div className="text-xs text-gray-700 mt-1 p-2 bg-gray-50 rounded">
+                                      <p><strong>Reasoning:</strong> {xResult.analysis!.reasoning}</p>
+                                      {xResult.analysis!.best_tweet && (
+                                        <p className="mt-2"><strong>Best Tweet:</strong> {xResult.analysis!.best_tweet}</p>
+                                      )}
+                                    </div>
+                                  </details>
+                                </div>
+                              ) : (
+                                <span className="text-red-600 text-xs">Error: {xResult.error}</span>
+                              )
+                            ) : analyzingToken === token.contract ? (
+                              <span className="text-blue-600 text-xs">Analyzing...</span>
+                            ) : (
+                              <button
+                                onClick={() => analyzeXStandalone(token)}
+                                className="bg-purple-500 text-white px-2 py-1 rounded text-xs hover:bg-purple-600"
+                              >
+                                Analyze X
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
