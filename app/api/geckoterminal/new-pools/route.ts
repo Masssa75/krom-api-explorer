@@ -53,10 +53,26 @@ export async function GET(request: Request) {
       id: string;
       attributes: {
         pool_created_at: string;
-        volume_usd: { h24: string };
+        volume_usd: { h1: string; h6: string; h24: string };
         reserve_in_usd: string;
-        transactions: { h24?: { buyers: number } };
-        [key: string]: unknown;
+        transactions: { 
+          h1: { buys: number; sells: number; buyers: number; sellers: number };
+          h6: { buys: number; sells: number; buyers: number; sellers: number };
+          h24: { buys: number; sells: number; buyers: number; sellers: number };
+        };
+        base_token_price_usd: string;
+        fdv_usd: string;
+        market_cap_usd?: string | null;
+        address: string;
+        name: string;
+        price_change_percentage: {
+          m5: string;
+          m15: string;
+          m30: string;
+          h1: string;
+          h6: string;
+          h24: string;
+        };
       };
       relationships: {
         base_token: { data: { id: string } };
@@ -69,7 +85,7 @@ export async function GET(request: Request) {
       const poolCreated = new Date(pool.attributes.pool_created_at);
       const volume24h = parseFloat(pool.attributes.volume_usd.h24) || 0;
       const reserveUsd = parseFloat(pool.attributes.reserve_in_usd) || 0;
-      const buyers24h = pool.attributes.transactions.h24?.buyers || 0;
+      const buyers24h = pool.attributes.transactions.h24.buyers || 0;
       
       // Filter by age
       if (poolCreated < cutoffTime) return false;
@@ -168,10 +184,21 @@ export async function GET(request: Request) {
 }
 
 interface PoolAttributes {
-  volume_usd: { h24: string };
-  transactions: { h24?: { buyers: number } };
+  volume_usd: { h1: string; h6: string; h24: string };
+  transactions: { 
+    h1: { buys: number; sells: number; buyers: number; sellers: number };
+    h6: { buys: number; sells: number; buyers: number; sellers: number };
+    h24: { buys: number; sells: number; buyers: number; sellers: number };
+  };
   reserve_in_usd: string;
-  price_change_percentage: { h24: string };
+  price_change_percentage: {
+    m5: string;
+    m15: string;
+    m30: string;
+    h1: string;
+    h6: string;
+    h24: string;
+  };
 }
 
 function calculateQualityScore(attributes: PoolAttributes, ageHours: number): number {
@@ -187,7 +214,7 @@ function calculateQualityScore(attributes: PoolAttributes, ageHours: number): nu
   else if (volume24h > 1000) score += 5;
   
   // Buyer activity score (0-25 points)
-  const buyers24h = attributes.transactions.h24?.buyers || 0;
+  const buyers24h = attributes.transactions.h24.buyers || 0;
   if (buyers24h > 100) score += 25;
   else if (buyers24h > 50) score += 20;
   else if (buyers24h > 25) score += 15;
