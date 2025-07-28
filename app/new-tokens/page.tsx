@@ -484,7 +484,7 @@ export default function NewTokensPage() {
                             const xResult = xAnalysisResults[tokenId];
                             const isAnalyzing = analyzingTokens.has(tokenId);
                             
-                            if (xResult?.success) {
+                            if (xResult?.success && xResult.analysis) {
                               return (
                                 <div className="text-xs">
                                   <span className={`inline-block px-2 py-1 rounded font-bold ${
