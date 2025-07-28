@@ -148,9 +148,20 @@ export default function Home() {
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-4xl font-bold">KROM API Explorer - Manual Processing</h1>
-          <Link href="/new-tokens" className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 font-semibold">
-            🚀 Discover New Tokens
-          </Link>
+          <div className="flex gap-4">
+            <Link 
+              href="/new-tokens"
+              className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+            >
+              🚀 Discover New Tokens
+            </Link>
+            <Link 
+              href="/latest-pools"
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+            >
+              ⚡ Latest 200 Pools
+            </Link>
+          </div>
         </div>
         
         {error && (

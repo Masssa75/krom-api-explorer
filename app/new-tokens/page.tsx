@@ -305,9 +305,13 @@ export default function NewTokensPage() {
               <label className="block text-sm font-medium mb-1">Age (hours)</label>
               <select
                 value={filters.hours}
-                onChange={(e) => setFilters({...filters, hours: parseInt(e.target.value)})}
+                onChange={(e) => setFilters({...filters, hours: parseFloat(e.target.value)})}
                 className="w-full p-2 border rounded"
               >
+                <option value="0.0167">Last 1 minute</option>
+                <option value="0.0833">Last 5 minutes</option>
+                <option value="0.1667">Last 10 minutes</option>
+                <option value="0.5">Last 30 minutes</option>
                 <option value="1">Last 1 hour</option>
                 <option value="6">Last 6 hours</option>
                 <option value="12">Last 12 hours</option>

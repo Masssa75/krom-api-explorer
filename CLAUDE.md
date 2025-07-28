@@ -125,10 +125,15 @@ function calculateQualityScore(attributes, ageHours) {
 - ✅ Integrated X analysis button in new tokens table
 - ✅ Removed default filters to show all tokens
 - ✅ Added informative notes about data volume
+- ✅ Implemented multi-page fetching for global sorting (up to 10K tokens)
+- ✅ Fixed client-side errors preventing page load
+- ⚠️ X analysis currently failing - investigating API issues
 
 ## Known Limitations
 - X analysis takes 15-25 seconds due to web scraping
-- GeckoTerminal rate limits may affect data freshness
+- GeckoTerminal API only shows most recent ~200 pools (about 10 minutes of data)
+- Cannot fetch historical data beyond what's currently in the API
+- Estimated 25,000+ tokens launched on Solana daily (based on extrapolation)
 - Some networks have fewer new tokens than others
 
 ## Development
