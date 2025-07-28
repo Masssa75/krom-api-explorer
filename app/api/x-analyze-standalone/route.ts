@@ -71,6 +71,10 @@ export async function POST(request: Request): Promise<Response> {
     // Step 3: Analyze tweets with Kimi K2 (using same logic as main app)
     const analysisPrompt = createXAnalysisPrompt(symbol, contract_address, tweets);
     
+    // Debug logging
+    console.log('OpenRouter API Key exists:', !!process.env.OPEN_ROUTER_API_KEY);
+    console.log('API Key length:', process.env.OPEN_ROUTER_API_KEY?.length || 0);
+    
     const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -95,9 +99,11 @@ export async function POST(request: Request): Promise<Response> {
     });
 
     if (!openRouterResponse.ok) {
+      const errorBody = await openRouterResponse.text();
+      console.error('OpenRouter API Error:', openRouterResponse.status, errorBody);
       return NextResponse.json({
         success: false,
-        error: `Kimi K2 API failed: ${openRouterResponse.status}`
+        error: `Kimi K2 API failed: ${openRouterResponse.status} - ${errorBody}`
       }, { status: 500 });
     }
 
