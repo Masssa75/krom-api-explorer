@@ -15,11 +15,11 @@ export async function GET(request: Request) {
   
   const options: NewPoolsQuery = {
     network: searchParams.get('network') || 'solana',
-    hours: parseInt(searchParams.get('hours') || '24') || 24,
+    hours: parseInt(searchParams.get('hours') || '24', 10) || 24,
     min_volume: parseFloat(searchParams.get('min_volume') || '1000') || 1000,
     min_liquidity: parseFloat(searchParams.get('min_liquidity') || '5000') || 5000,
-    min_buyers: parseInt(searchParams.get('min_buyers') || '3') || 3,
-    page: parseInt(searchParams.get('page') || '1') || 1,
+    min_buyers: parseInt(searchParams.get('min_buyers') || '3', 10) || 3,
+    page: parseInt(searchParams.get('page') || '1', 10) || 1,
     include_tokens: searchParams.get('include_tokens') === 'true'
   };
   
@@ -46,7 +46,8 @@ export async function GET(request: Request) {
     
     // Filter pools based on criteria
     const now = new Date();
-    const cutoffTime = new Date(now.getTime() - (options.hours * 60 * 60 * 1000));
+    const hours = options.hours || 24;
+    const cutoffTime = new Date(now.getTime() - (hours * 60 * 60 * 1000));
     
     interface PoolData {
       id: string;
