@@ -68,64 +68,43 @@ export async function POST(request: Request): Promise<Response> {
       });
     }
 
-    // Step 3: Analyze tweets with Kimi K2 (using same logic as main app)
+    // Step 3: Analyze tweets with Claude API (fallback from Kimi K2 due to auth issues)
     const analysisPrompt = createXAnalysisPrompt(symbol, contract_address, tweets);
     
-    // Debug logging and clean API key
-    const apiKey = process.env.OPEN_ROUTER_API_KEY?.trim();
-    console.log('OpenRouter API Key exists:', !!apiKey);
-    console.log('API Key length:', apiKey?.length || 0);
-    console.log('API Key starts with sk-or-v1:', apiKey?.startsWith('sk-or-v1-'));
+    console.log('Using Claude API as fallback due to OpenRouter auth issues');
     
-    if (!apiKey) {
-      return NextResponse.json({
-        success: false,
-        error: 'OpenRouter API key not found in environment variables'
-      }, { status: 500 });
-    }
-    
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
-    
-    const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': 'https://majestic-centaur-0d5fcc.netlify.app',
-        'X-Title': 'KROM API Explorer'
+        'x-api-key': process.env.ANTHROPIC_API_KEY!,
+        'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'moonshotai/kimi-k2', // Use paid Kimi K2 model
+        model: 'claude-3-haiku-20240307',
+        max_tokens: 800,
+        temperature: 0,
+        system: analysisPrompt,
         messages: [
-          {
-            role: 'system',
-            content: analysisPrompt
-          },
           {
             role: 'user',
             content: `Analyze these tweets about ${symbol} token (contract: ${contract_address}):`
           }
-        ],
-        temperature: 0,
-        max_tokens: 500
+        ]
       })
     });
-    
-    clearTimeout(timeoutId);
 
-    if (!openRouterResponse.ok) {
-      const errorBody = await openRouterResponse.text();
-      console.error('OpenRouter API Error:', openRouterResponse.status, errorBody);
+    if (!claudeResponse.ok) {
+      const errorBody = await claudeResponse.text();
+      console.error('Claude API Error:', claudeResponse.status, errorBody);
       return NextResponse.json({
         success: false,
-        error: `Kimi K2 API failed: ${openRouterResponse.status} - ${errorBody}`
+        error: `Claude API failed: ${claudeResponse.status} - ${errorBody}`
       }, { status: 500 });
     }
 
-    const openRouterResult = await openRouterResponse.json();
-    const analysisText = openRouterResult.choices[0].message.content;
+    const claudeResult = await claudeResponse.json();
+    const analysisText = claudeResult.content[0].text;
 
     // Step 4: Parse Kimi K2's response
     const analysis = parseKimiAnalysis(analysisText, tweets);
