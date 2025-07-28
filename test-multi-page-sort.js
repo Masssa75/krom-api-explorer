@@ -15,9 +15,27 @@ const { chromium } = require('playwright');
     await page.screenshot({ path: 'new-tokens-page-current.png', fullPage: true });
     console.log('Screenshot saved as new-tokens-page-current.png');
     
+    // Check if table exists
+    const tableExists = await page.locator('table').count();
+    console.log(`Table exists: ${tableExists > 0 ? 'Yes' : 'No'}`);
+    
+    // Check if any tokens are loaded
+    const tokenRows = await page.locator('table tbody tr').count();
+    console.log(`Number of token rows: ${tokenRows}`);
+    
+    // Check if error message is displayed (not quality scores)
+    const errorMessage = await page.locator('.bg-red-100.border-red-400').count();
+    if (errorMessage > 0) {
+      const error = await page.locator('.bg-red-100.border-red-400').textContent();
+      console.log(`Error displayed: ${error}`);
+    }
+    
     // Check if the sort across all pages checkbox is visible
-    const sortCheckbox = await page.locator('input[type="checkbox"]:near(:text("Sort across all pages"))').count();
-    console.log(`Found sort across all pages checkbox: ${sortCheckbox > 0 ? 'Yes' : 'No'}`);
+    const sortCheckbox = await page.locator('input[type="checkbox"]').count();
+    console.log(`Total checkboxes on page: ${sortCheckbox}`);
+    
+    const sortText = await page.locator('text="Sort across all pages"').count();
+    console.log(`Found "Sort across all pages" text: ${sortText > 0 ? 'Yes' : 'No'}`);
     
     if (sortCheckbox > 0) {
       console.log('✅ Multi-page sorting UI is available!');

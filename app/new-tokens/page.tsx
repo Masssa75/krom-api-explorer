@@ -144,7 +144,7 @@ export default function NewTokensPage() {
       fetchNewTokens(1); // Reset to page 1 when filters change
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters, sortAcrossAllPages]);
+  }, [filters.network, filters.hours, filters.min_volume, filters.min_liquidity, filters.min_buyers, sortAcrossAllPages]);
 
   useEffect(() => {
     if (autoRefresh && !fetchingAllPages) {
@@ -248,6 +248,13 @@ export default function NewTokensPage() {
       }));
     } catch (err) {
       console.error('X analysis failed:', err);
+      setXAnalysisResults(prev => ({
+        ...prev,
+        [tokenId]: {
+          success: false,
+          error: err instanceof Error ? err.message : 'Analysis failed'
+        }
+      }));
     }
     
     setAnalyzingTokens(prev => {
@@ -627,6 +634,18 @@ export default function NewTokensPage() {
                                   <div className="text-gray-600 mt-1">
                                     {xResult.analysis.tweets_found} tweets
                                   </div>
+                                </div>
+                              );
+                            } else if (xResult && !xResult.success) {
+                              return (
+                                <div className="text-xs">
+                                  <span className="text-red-600">X Analysis Failed</span>
+                                  <button
+                                    onClick={() => analyzeX(token)}
+                                    className="block mt-1 text-blue-600 hover:underline"
+                                  >
+                                    Retry
+                                  </button>
                                 </div>
                               );
                             } else if (isAnalyzing) {
