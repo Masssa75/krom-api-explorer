@@ -23,25 +23,71 @@ export async function GET(request: Request) {
     include_tokens: searchParams.get('include_tokens') === 'true'
   };
   
+  // Check if we want to fetch all pages for sorting
+  const fetchAll = searchParams.get('fetch_all') === 'true';
+  const maxPages = Math.min(parseInt(searchParams.get('max_pages') || '50', 10), 500); // Cap at 500 for safety
+  
   try {
-    // Fetch new pools from GeckoTerminal
-    const url = `https://api.geckoterminal.com/api/v2/networks/${options.network}/new_pools?page=${options.page}`;
-    const response = await fetch(url);
+    let allPools: any[] = [];
     
-    if (!response.ok) {
-      return NextResponse.json({
-        success: false,
-        error: `GeckoTerminal API failed: ${response.status}`
-      }, { status: response.status });
-    }
+    if (fetchAll) {
+      // Fetch multiple pages in batches to handle large requests
+      const batchSize = 10; // Fetch 10 pages at a time
+      let currentPage = 1;
+      let hasMoreData = true;
+      
+      while (currentPage <= maxPages && hasMoreData) {
+        const promises = [];
+        const endPage = Math.min(currentPage + batchSize - 1, maxPages);
+        
+        for (let p = currentPage; p <= endPage; p++) {
+          const url = `https://api.geckoterminal.com/api/v2/networks/${options.network}/new_pools?page=${p}`;
+          promises.push(
+            fetch(url)
+              .then(r => r.json())
+              .catch(() => ({ data: null })) // Handle failed requests gracefully
+          );
+        }
+        
+        const results = await Promise.all(promises);
+        let batchHasData = false;
+        
+        for (const result of results) {
+          if (result.data && result.data.length > 0) {
+            allPools = allPools.concat(result.data);
+            batchHasData = true;
+          }
+        }
+        
+        // If we got no data in this batch, stop fetching
+        if (!batchHasData && currentPage > 1) {
+          hasMoreData = false;
+        }
+        
+        currentPage += batchSize;
+      }
+    } else {
+      // Single page fetch (existing behavior)
+      const url = `https://api.geckoterminal.com/api/v2/networks/${options.network}/new_pools?page=${options.page}`;
+      const response = await fetch(url);
     
-    const data = await response.json();
-    
-    if (!data.data) {
-      return NextResponse.json({
-        success: false,
-        error: 'No data returned from GeckoTerminal API'
-      }, { status: 500 });
+      if (!response.ok) {
+        return NextResponse.json({
+          success: false,
+          error: `GeckoTerminal API failed: ${response.status}`
+        }, { status: response.status });
+      }
+      
+      const data = await response.json();
+      
+      if (!data.data) {
+        return NextResponse.json({
+          success: false,
+          error: 'No data returned from GeckoTerminal API'
+        }, { status: 500 });
+      }
+      
+      allPools = data.data;
     }
     
     // Filter pools based on criteria
@@ -81,7 +127,7 @@ export async function GET(request: Request) {
       };
     }
     
-    const filteredPools = data.data.filter((pool: PoolData) => {
+    const filteredPools = allPools.filter((pool: PoolData) => {
       const poolCreated = new Date(pool.attributes.pool_created_at);
       const volume24h = parseFloat(pool.attributes.volume_usd.h24) || 0;
       const reserveUsd = parseFloat(pool.attributes.reserve_in_usd) || 0;
@@ -167,7 +213,8 @@ export async function GET(request: Request) {
       data: enrichedPools,
       filters: options,
       found: filteredPools.length,
-      total_fetched: data.data.length,
+      total_fetched: allPools.length,
+      pages_fetched: fetchAll ? Math.ceil(allPools.length / 20) : 1, // Approximate pages based on pools
       timestamp: new Date().toISOString(),
       networks_available: [
         'solana', 'ethereum', 'base', 'polygon_pos', 'avalanche', 

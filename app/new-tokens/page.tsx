@@ -65,6 +65,11 @@ export default function NewTokensPage() {
   const [analyzingTokens, setAnalyzingTokens] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [totalTokens, setTotalTokens] = useState(0);
+  const [sortAcrossAllPages, setSortAcrossAllPages] = useState(false);
+  const [fetchingAllPages, setFetchingAllPages] = useState(false);
+  const [pagesFetched, setPagesFetched] = useState(0);
+  const [totalPageCount, setTotalPageCount] = useState(0);
+  const [maxPagesToFetch, setMaxPagesToFetch] = useState(50);
   interface XAnalysisResult {
     success: boolean;
     analysis?: {
@@ -81,8 +86,14 @@ export default function NewTokensPage() {
   }
   const [xAnalysisResults, setXAnalysisResults] = useState<{[key: string]: XAnalysisResult}>({});
 
-  const fetchNewTokens = async (page = 1) => {
-    setLoading(true);
+  const fetchNewTokens = async (page = 1, fetchAll = false) => {
+    if (fetchAll) {
+      setFetchingAllPages(true);
+      setPagesFetched(0);
+      setTotalPageCount(0);
+    } else {
+      setLoading(true);
+    }
     setError('');
     
     try {
@@ -95,6 +106,11 @@ export default function NewTokensPage() {
         page: page.toString()
       });
       
+      if (fetchAll) {
+        params.set('fetch_all', 'true');
+        params.set('max_pages', maxPagesToFetch.toString());
+      }
+      
       const res = await fetch(`/api/geckoterminal/new-pools?${params}`);
       const data = await res.json();
       
@@ -102,6 +118,11 @@ export default function NewTokensPage() {
         setTokens(data.data || []);
         setTotalTokens(data.total_fetched || data.data?.length || 0);
         setCurrentPage(page);
+        
+        if (fetchAll && data.pages_fetched) {
+          setPagesFetched(data.pages_fetched);
+          setTotalPageCount(data.pages_fetched);
+        }
       } else {
         setError(data.error || 'Failed to fetch new tokens');
       }
@@ -109,21 +130,29 @@ export default function NewTokensPage() {
       setError('Failed to fetch data');
     }
     
-    setLoading(false);
+    if (fetchAll) {
+      setFetchingAllPages(false);
+    } else {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    fetchNewTokens(1); // Reset to page 1 when filters change
+    if (sortAcrossAllPages) {
+      fetchNewTokens(1, true); // Fetch all pages when enabled
+    } else {
+      fetchNewTokens(1); // Reset to page 1 when filters change
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters]);
+  }, [filters, sortAcrossAllPages]);
 
   useEffect(() => {
-    if (autoRefresh) {
-      const interval = setInterval(() => fetchNewTokens(currentPage), 30000); // Refresh every 30 seconds
+    if (autoRefresh && !fetchingAllPages) {
+      const interval = setInterval(() => fetchNewTokens(currentPage, sortAcrossAllPages), 30000); // Refresh every 30 seconds
       return () => clearInterval(interval);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoRefresh, filters, currentPage]);
+  }, [autoRefresh, filters, currentPage, sortAcrossAllPages]);
 
   const getSortedTokens = () => {
     const sorted = [...tokens].sort((a, b) => {
@@ -337,8 +366,61 @@ export default function NewTokensPage() {
           </div>
         </div>
 
+        {/* Sort Across All Pages Toggle */}
+        <div className="bg-white p-4 rounded-lg shadow mb-4">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={sortAcrossAllPages}
+                    onChange={(e) => setSortAcrossAllPages(e.target.checked)}
+                    className="mr-2"
+                    disabled={fetchingAllPages}
+                  />
+                  <span className="font-medium">Sort across all pages</span>
+                </label>
+                {sortAcrossAllPages && !fetchingAllPages && (
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-600">
+                      Fetch up to
+                    </label>
+                    <select
+                      value={maxPagesToFetch}
+                      onChange={(e) => setMaxPagesToFetch(parseInt(e.target.value))}
+                      className="px-2 py-1 border rounded text-sm"
+                    >
+                      <option value="50">50 pages (~1K tokens)</option>
+                      <option value="100">100 pages (~2K tokens)</option>
+                      <option value="250">250 pages (~5K tokens)</option>
+                      <option value="500">500 pages (~10K tokens)</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+              {fetchingAllPages && (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <span className="text-sm text-blue-600">
+                    Fetching tokens... ({totalTokens} so far)
+                  </span>
+                </div>
+              )}
+            </div>
+            {sortAcrossAllPages && !fetchingAllPages && (
+              <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                <p className="text-sm text-blue-800">
+                  <strong>Note:</strong> Fetching {maxPagesToFetch} pages will retrieve approximately {maxPagesToFetch * 20} tokens.
+                  This may take up to {Math.ceil(maxPagesToFetch / 10) * 5} seconds. The results will be sorted globally by your selected criteria.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Results */}
-        {loading && <div className="text-center py-8">Loading new tokens...</div>}
+        {(loading || fetchingAllPages) && !tokens.length && <div className="text-center py-8">Loading new tokens...</div>}
         
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -352,39 +434,52 @@ export default function NewTokensPage() {
               <div className="flex justify-between items-center">
                 <div>
                   <h3 className="font-semibold">
-                    Found {tokens.length} new tokens 
-                    {totalTokens > tokens.length && (
-                      <span className="text-sm font-normal text-gray-600">
-                        {' '}(Page {currentPage}, showing filtered results from {totalTokens} total)
-                      </span>
+                    {sortAcrossAllPages ? (
+                      <>Showing top {tokens.length} tokens from {totalTokens} fetched</>
+                    ) : (
+                      <>
+                        Found {tokens.length} new tokens 
+                        {totalTokens > tokens.length && (
+                          <span className="text-sm font-normal text-gray-600">
+                            {' '}(Page {currentPage}, showing filtered results from {totalTokens} total)
+                          </span>
+                        )}
+                      </>
                     )}
                   </h3>
                   <p className="text-xs text-gray-500 mt-1">
-                    Note: GeckoTerminal has hundreds of new tokens. Adjust filters or browse pages to see more.
+                    {sortAcrossAllPages ? (
+                      `Fetched ${pagesFetched} pages containing ${totalTokens} tokens. Results are sorted globally.`
+                    ) : (
+                      'Note: GeckoTerminal has hundreds of new tokens. Enable "Sort across all pages" for comprehensive sorting.'
+                    )}
                   </p>
                 </div>
                 <div className="flex gap-2 items-center">
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => fetchNewTokens(currentPage - 1)}
-                      disabled={currentPage <= 1}
-                      className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      ← Prev
-                    </button>
-                    <span className="px-3 py-1 text-sm">Page {currentPage}</span>
-                    <button
-                      onClick={() => fetchNewTokens(currentPage + 1)}
-                      className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300"
-                    >
-                      Next →
-                    </button>
-                  </div>
+                  {!sortAcrossAllPages && (
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => fetchNewTokens(currentPage - 1)}
+                        disabled={currentPage <= 1}
+                        className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        ← Prev
+                      </button>
+                      <span className="px-3 py-1 text-sm">Page {currentPage}</span>
+                      <button
+                        onClick={() => fetchNewTokens(currentPage + 1)}
+                        className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300"
+                      >
+                        Next →
+                      </button>
+                    </div>
+                  )}
                   <button
-                    onClick={() => fetchNewTokens(currentPage)}
-                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-sm"
+                    onClick={() => fetchNewTokens(currentPage, sortAcrossAllPages)}
+                    disabled={fetchingAllPages}
+                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Refresh
+                    {fetchingAllPages ? 'Fetching...' : 'Refresh'}
                   </button>
                 </div>
               </div>
